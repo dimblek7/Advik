@@ -1,7 +1,7 @@
 import type { User, UserInsert, UserUpdate } from '@shared/types'
 
 // Simple flag to enable/disable fallback
-const ENABLE_FALLBACK = true // Set to false to disable localStorage fallback
+const ENABLE_FALLBACK = false // Set to false to disable localStorage fallback
 
 interface Component {
   id: string
