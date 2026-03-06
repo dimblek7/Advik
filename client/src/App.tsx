@@ -15,17 +15,18 @@ function App() {
   const [me, setMe] = useState<User | null>(null)
 
   // Get current page from URL path
-  const getPageFromPath = (path: string): 'home' | 'components' | 'compare' | 'create' | 'create-adv' => {
+  const getPageFromPath = (path: string): 'home' | 'components' | 'compare' | 'create' | 'create-adv' | 'edit' => {
     if (path === '/') return 'compare'  // Default to compare page
     if (path === '/components') return 'components'
     if (path === '/compare') return 'compare'
     if (path === '/create') return 'create'
     if (path === '/create-advanced') return 'create-adv'
+    if (path === '/edit') return 'edit'
     if (path === '/admin') return 'home'  // Hidden admin route
     return 'compare'
   }
 
-  const [page, setPage] = useState<'home' | 'components' | 'compare' | 'create' | 'create-adv'>(getPageFromPath(location.pathname))
+  const [page, setPage] = useState<'home' | 'components' | 'compare' | 'create' | 'create-adv' | 'edit'>(getPageFromPath(location.pathname))
   
   // Update page when location changes
   useEffect(() => {
@@ -33,13 +34,14 @@ function App() {
   }, [location.pathname])
   
   // Navigate when page changes programmatically
-  const navigateToPage = (newPage: 'home' | 'components' | 'compare' | 'create' | 'create-adv') => {
-    const pathMap = {
+  const navigateToPage = (newPage: 'home' | 'components' | 'compare' | 'create' | 'create-adv' | 'edit') => {
+    const pathMap: Record<string, string> = {
       'home': '/admin',
       'components': '/components',
       'compare': '/compare',
       'create': '/create',
-      'create-adv': '/create-advanced'
+      'create-adv': '/create-advanced',
+      'edit': '/edit'
     }
     navigate(pathMap[newPage])
   }

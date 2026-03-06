@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react'
 import type { User } from '@shared/types'
 
-export type Page = 'home' | 'components' | 'compare' | 'create' | 'create-adv'
+export type Page = 'home' | 'components' | 'compare' | 'create' | 'create-adv' | 'edit'
 
 function crumbsFor(page: Page) {
   if (page === 'home') return ['Home']
   if (page === 'compare') return ['Home', 'Compare']
   if (page === 'components') return ['Home', 'Components']
   if (page === 'create') return ['Home', 'Components', 'Create']
+  if (page === 'edit') return ['Home', 'Components', 'Edit']
   return ['Home']
 }
 
@@ -40,6 +41,7 @@ export function NavBar({ page, setPage, me, onLogout }: { page: Page; setPage: (
                 if (c === 'Compare') setPage('compare')
                 if (c === 'Components') setPage('components')
                 if (c === 'Create') setPage('create')
+                if (c === 'Edit') setPage('components')
               }
               return (
                 <span key={c} className={isLast ? 'crumb current' : 'crumb'} onClick={!isLast ? onClick : undefined}>

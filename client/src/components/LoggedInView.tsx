@@ -10,8 +10,8 @@ import type { User } from '@shared/types'
 interface LoggedInViewProps {
   me: User
   token: string
-  page: 'home' | 'components' | 'compare' | 'create' | 'create-adv'
-  setPage: (page: 'home' | 'components' | 'compare' | 'create' | 'create-adv') => void
+  page: 'home' | 'components' | 'compare' | 'create' | 'create-adv' | 'edit'
+  setPage: (page: 'home' | 'components' | 'compare' | 'create' | 'create-adv' | 'edit') => void
   onLogout: () => void
 }
 
@@ -22,6 +22,7 @@ export default function LoggedInView({ me, token, page, setPage, onLogout }: Log
   
   const [compError, setCompError] = useState('')
   const [components, setComponents] = useState<any[]>([])
+  const [editingComponent, setEditingComponent] = useState<any | null>(null)
   const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree')
   const [columns, setColumns] = useState<string[]>(['CMP-001','CMP-002'])
   const [onlyCommon, setOnlyCommon] = useState(false)
@@ -192,6 +193,16 @@ export default function LoggedInView({ me, token, page, setPage, onLogout }: Log
     }
   }
 
+  async function handleDeleteComponent(c: any) {
+    if (!confirm(`Delete "${c.name}"? This cannot be undone.`)) return
+    try {
+      await Api.deleteComponent(token, c.id)
+      setComponents(prev => prev.filter(x => x.id !== c.id))
+    } catch (e: any) {
+      alert(e.message)
+    }
+  }
+
   return (
     <>
       <NavBar page={page} setPage={setPage} me={me} onLogout={onLogout} />
@@ -234,67 +245,122 @@ export default function LoggedInView({ me, token, page, setPage, onLogout }: Log
       
       {page === 'components' && (
         <div className="card">
-          <div className="row spread">
-            <h2>Components</h2>
-            <div className="row">
-              <button 
-                className={viewMode === 'tree' ? 'link active' : 'link secondary'} 
-                onClick={() => setViewMode('tree')}
-              >
-                Tree View
-              </button>
-              <button 
-                className={viewMode === 'table' ? 'link active' : 'link secondary'} 
-                onClick={() => setViewMode('table')}
-              >
-                Table View
-              </button>
-              <button onClick={() => setPage('create')}>Create Component</button>
-              <button className="secondary" onClick={() => setPage('create-adv')}>Create (Advanced)</button>
+          <div className="comp-page-header">
+            <div>
+              <h2 style={{ margin: 0 }}>Components</h2>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
+                {components.length} component{components.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="comp-page-actions">
+              <div className="view-toggle">
+                <button
+                  className={viewMode === 'tree' ? 'view-toggle-btn active' : 'view-toggle-btn'}
+                  onClick={() => setViewMode('tree')}
+                >
+                  &#9783; Tree
+                </button>
+                <button
+                  className={viewMode === 'table' ? 'view-toggle-btn active' : 'view-toggle-btn'}
+                  onClick={() => setViewMode('table')}
+                >
+                  &#9776; Table
+                </button>
+              </div>
+              <button className="secondary" onClick={async () => {
+                try {
+                  setCompError('')
+                  const r = await Api.listComponents(token, undefined, undefined, viewMode === 'tree')
+                  setComponents(r.items || [])
+                } catch (e: any) {
+                  setCompError(e.message)
+                }
+              }}>&#8635; Refresh</button>
+              <button onClick={() => setPage('create')}>+ Create</button>
+              <button className="secondary" onClick={() => setPage('create-adv')}>+ Create (Advanced)</button>
             </div>
           </div>
-          <div className="row">
-            <button className="secondary" onClick={async () => {
-              try {
-                setCompError('')
-                const r = await Api.listComponents(token, undefined, undefined, viewMode === 'tree')
-                setComponents(r.items || [])
-              } catch (e: any) {
-                setCompError(e.message)
-              }
-            }}>Refresh</button>
-          </div>
+
           {compError && <p className="error">{compError}</p>}
-          {viewMode === 'tree' ? (
-            <ComponentTreeView 
-              components={components} 
+
+          {components.length === 0 ? (
+            <div className="comp-empty">
+              <p>No components yet. Create one to get started.</p>
+            </div>
+          ) : viewMode === 'tree' ? (
+            <ComponentTreeView
+              components={components}
               onComponentSelect={(component) => {
-                // You can add component selection logic here
                 console.log('Selected component:', component)
+              }}
+              onEdit={(component) => {
+                setEditingComponent(component)
+                setPage('edit')
               }}
             />
           ) : (
-            <table>
-              <thead>
-                <tr><th>Name</th><th>Parent</th><th>Attributes</th></tr>
-              </thead>
-              <tbody>
-                {components.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.parent_id || '-'}</td>
-                    <td>{Object.keys(c.attributes || {}).length}</td>
+            <div className="comp-table-wrap">
+              <table className="comp-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Parent</th>
+                    <th>Attributes</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {components.map((c) => (
+                    <tr key={c.id}>
+                      <td className="comp-table-name">{c.name}</td>
+                      <td><span className={`status-pill status-${c.status || 'draft'}`}>{c.status || 'draft'}</span></td>
+                      <td className="comp-table-muted">{c.parent_id || '—'}</td>
+                      <td className="comp-table-muted">{Object.keys(c.attributes || {}).length}</td>
+                      <td>
+                        <button className="secondary icon-btn" onClick={() => { setEditingComponent(c); setPage('edit') }} title="Edit">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
       
+      {page === 'edit' && (
+        <div className="card form-page-card">
+          {editingComponent ? (
+            <CreateComponentForm
+              initialData={{
+                id: editingComponent.id,
+                name: editingComponent.name,
+                parent_id: editingComponent.parent_id,
+                attributes: editingComponent.attributes || {},
+                status: editingComponent.status || 'draft',
+              }}
+              onCancel={() => { setEditingComponent(null); setPage('components') }}
+              onSubmit={async (form) => {
+                try {
+                  await Api.updateComponent(token, editingComponent.id, form)
+                  setEditingComponent(null)
+                  setPage('components')
+                } catch (e: any) {
+                  alert(e.message)
+                }
+              }}
+            />
+          ) : (
+            <p>No component selected. <button className="secondary" onClick={() => setPage('components')}>Back to Components</button></p>
+          )}
+        </div>
+      )}
+
       {page === 'create' && (
-        <div className="card">
-          <h2>Create Component</h2>
+        <div className="card form-page-card">
           <CreateComponentForm
             onCancel={() => setPage('components')}
             onSubmit={async (form) => {
@@ -308,16 +374,24 @@ export default function LoggedInView({ me, token, page, setPage, onLogout }: Log
           />
         </div>
       )}
-      
+
       {page === 'create-adv' && (
-        <div className="card">
+        <div className="card form-page-card">
           <AdvancedComponentCreator token={token} onDone={() => setPage('components')} />
         </div>
       )}
       
       {page === 'compare' && (
         <div className="card">
-          <h2>Compare Components</h2>
+          <div className="row spread" style={{ marginBottom: 12 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Compare Components</h2>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>
+                {columns.length} component{columns.length !== 1 ? 's' : ''} selected
+                &nbsp;&middot;&nbsp; {combined.length} available
+              </p>
+            </div>
+          </div>
           <ComparisonTable
             options={combined}
             columns={columns}

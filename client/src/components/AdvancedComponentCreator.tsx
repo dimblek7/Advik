@@ -116,11 +116,15 @@ export default function AdvancedComponentCreator({ token, onDone }: { token: str
   }
 
   function Stepper() {
+    const labels = ['Basic Info', 'Technical Specs', 'Media']
     return (
-      <div className="row" style={{ marginBottom: 8 }}>
-        <div className="pill" style={{ background: step === 1 ? '#2563eb' : '#eef2ff', color: step === 1 ? '#fff' : '#3730a3' }}>1. Basic Info</div>
-        <div className="pill" style={{ background: step === 2 ? '#2563eb' : '#eef2ff', color: step === 2 ? '#fff' : '#3730a3' }}>2. Technical Specs</div>
-        <div className="pill" style={{ background: step === 3 ? '#2563eb' : '#eef2ff', color: step === 3 ? '#fff' : '#3730a3' }}>3. Media</div>
+      <div className="wizard-steps" style={{ marginBottom: 20 }}>
+        {labels.map((label, i) => (
+          <div key={i} className={`wizard-step ${step === i + 1 ? 'active' : step > i + 1 ? 'done' : ''}`}>
+            <span className="wizard-step-num">{i + 1}</span>
+            <span className="wizard-step-label">{label}</span>
+          </div>
+        ))}
       </div>
     )
   }
@@ -128,18 +132,19 @@ export default function AdvancedComponentCreator({ token, onDone }: { token: str
   function ChildEditor({ idx, depth = 1 }: { idx: number; depth?: number }) {
     const base = `children.${idx}`
     const { fields: childProps, append: appendProp, remove: removeProp } = useFieldArray({ control, name: `${base}.properties` as any })
-    const { fields: grandChildren, append: appendGrand, remove: removeGrand } = useFieldArray({ control, name: `${base}.children` as any })
+    const { fields: grandChildren, append: appendGrand } = useFieldArray({ control, name: `${base}.children` as any })
     return (
-      <div style={{ marginLeft: depth * 16, borderLeft: '2px solid #e5e7eb', paddingLeft: 12, marginTop: 8 }}>
-        <div className="row" style={{ alignItems: 'flex-end' }}>
-          <label>Name
+      <div className="child-editor" style={{ marginLeft: depth * 16 }}>
+        <div className="form-row">
+          <div className="form-field">
+            <label>Name</label>
             <input {...register(`${base}.name` as const)} placeholder="Subcomponent name" />
-          </label>
-          <button type="button" className="secondary" onClick={() => removeChild(idx)}>Remove Subcomponent</button>
+          </div>
+          <button type="button" className="secondary" onClick={() => removeChild(idx)}>Remove</button>
         </div>
-        <div>
+        <div className="attr-list">
           {childProps.map((cp, pi) => (
-            <div className="row" key={cp.id} style={{ alignItems: 'flex-end' }}>
+            <div className="attr-row" key={cp.id}>
               <input {...register(`${base}.properties.${pi}.key` as const)} placeholder="Key" list="attr-keys" />
               <select {...register(`${base}.properties.${pi}.type` as const)}>
                 <option value="string">String</option>
@@ -147,132 +152,158 @@ export default function AdvancedComponentCreator({ token, onDone }: { token: str
                 <option value="boolean">Boolean</option>
               </select>
               <input {...register(`${base}.properties.${pi}.value` as const)} placeholder="Value" />
-              <button type="button" className="secondary" onClick={() => removeProp(pi)}>Remove</button>
+              <button type="button" className="secondary icon-btn" onClick={() => removeProp(pi)}>&times;</button>
             </div>
           ))}
-          <button type="button" onClick={() => appendProp({ key: '', value: '', type: 'string' } as any)}>Add Property</button>
         </div>
-        {grandChildren.length > 0 && <div style={{ marginTop: 6, fontSize: 12, color: '#6b7280' }}>Subcomponents</div>}
+        <button type="button" className="secondary" onClick={() => appendProp({ key: '', value: '', type: 'string' } as any)}>+ Add Property</button>
+        {grandChildren.length > 0 && <p className="section-hint">Subcomponents</p>}
         {grandChildren.map((gc, gi) => (
           <ChildEditor key={gc.id} idx={gi as any} depth={(depth || 1) + 1} />
         ))}
-        <div style={{ marginTop: 6 }}>
-          <button type="button" onClick={() => appendGrand({ name: '', properties: [], children: [] } as any)}>Add Subcomponent</button>
+        <div className="form-actions">
+          <button type="button" className="secondary" onClick={() => appendGrand({ name: '', properties: [], children: [] } as any)}>+ Add Subcomponent</button>
         </div>
       </div>
     )
   }
 
   return (
-    <div>
-      <div className="row spread">
-        <h2>Advanced Component Creator</h2>
-        <button className="secondary" onClick={onDone}>Back</button>
+    <div className="form-wizard">
+      <div className="wizard-header">
+        <div>
+          <h2 style={{ margin: 0 }}>Advanced Component Creator</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>Create components with nested subcomponents</p>
+        </div>
+        <button className="secondary" onClick={onDone}>← Back</button>
       </div>
       <Stepper />
       <form onSubmit={handleSubmit(async (data) => { await submitTree(data, null); onDone(); })}>
+
         {step === 1 && (
-          <>
-            <div className="row" style={{ alignItems: 'flex-end' }}>
-              <label>Name
-                <input {...register('name')} placeholder="e.g., Industrial Centrifugal Pump" />
-              </label>
-              <label>Status
-                <select {...register('status')}>
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
-                </select>
-              </label>
-              <label>Parent
-                <input list="parent-list" placeholder="Search parent..." onChange={e => setValue('parent_id', e.target.value || null)} />
-                <datalist id="parent-list">
-                  {parentOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </datalist>
-              </label>
-              <label>Duplicate From
-                <select value={dupSource} onChange={e => setDupSource(e.target.value)}>
-                  <option value="">Select</option>
-                  {components.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </label>
-              <button type="button" onClick={duplicateFromExisting}>Copy Attributes</button>
+          <div className="form-section">
+            <div className="form-group">
+              <div className="form-row">
+                <div className="form-field">
+                  <label>Name</label>
+                  <input {...register('name')} placeholder="e.g., Industrial Centrifugal Pump" />
+                  {errors.name && <span className="field-error">{String(errors.name.message)}</span>}
+                </div>
+                <div className="form-field">
+                  <label>Status</label>
+                  <select {...register('status')}>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-field">
+                  <label>Parent <span className="form-optional">(optional)</span></label>
+                  <input list="parent-list" placeholder="Search parent..." onChange={e => setValue('parent_id', e.target.value || null)} />
+                  <datalist id="parent-list">
+                    {parentOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </datalist>
+                </div>
+                <div className="form-field">
+                  <label>Duplicate From <span className="form-optional">(optional)</span></label>
+                  <div className="dup-row">
+                    <select value={dupSource} onChange={e => setDupSource(e.target.value)}>
+                      <option value="">— Select —</option>
+                      {components.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                    <button type="button" className="secondary" onClick={duplicateFromExisting}>Copy</button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="row" style={{ marginTop: 12 }}>
-              <button type="button" onClick={async () => { const ok = await trigger(['name','status'] as any); if (ok) setStep(2) }}>Next: Technical Specs</button>
+            <div className="form-actions">
+              <button type="button" onClick={async () => { const ok = await trigger(['name', 'status'] as any); if (ok) setStep(2) }}>Next: Technical Specs →</button>
             </div>
-          </>
+          </div>
         )}
 
         {step === 2 && (
-          <>
-            <h3>Properties</h3>
-            <div>
-              {fields.map((f, idx) => (
-                <div className="row" key={f.id} style={{ alignItems: 'flex-end' }}>
-                  <input {...register(`properties.${idx}.key` as const)} placeholder="Key" list="attr-keys" />
-                  <select {...register(`properties.${idx}.type` as const)}>
-                    <option value="string">String</option>
-                    <option value="number">Number</option>
-                    <option value="boolean">Boolean</option>
-                  </select>
-                  <input {...register(`properties.${idx}.value` as const)} placeholder="Value" />
-                  <button type="button" className="secondary" onClick={() => remove(idx)}>Remove</button>
-                </div>
-              ))}
+          <div className="form-section">
+            <div className="form-group">
+              <p className="group-label">Properties</p>
+              <div className="attr-list">
+                {fields.map((f, idx) => (
+                  <div className="attr-row" key={f.id}>
+                    <input {...register(`properties.${idx}.key` as const)} placeholder="Key" list="attr-keys" />
+                    <select {...register(`properties.${idx}.type` as const)}>
+                      <option value="string">String</option>
+                      <option value="number">Number</option>
+                      <option value="boolean">Boolean</option>
+                    </select>
+                    <input {...register(`properties.${idx}.value` as const)} placeholder="Value" />
+                    <button type="button" className="secondary icon-btn" onClick={() => remove(idx)}>&times;</button>
+                  </div>
+                ))}
+              </div>
               <datalist id="attr-keys">
                 {keySuggestions.map(k => <option key={k} value={k} />)}
               </datalist>
-              <button type="button" onClick={() => append({ key: '', value: '', type: 'string' })}>Add Property</button>
+              <div>
+                <button type="button" className="secondary" onClick={() => append({ key: '', value: '', type: 'string' })}>+ Add Property</button>
+              </div>
             </div>
 
-            <h3 style={{ marginTop: 16 }}>Subcomponents</h3>
-            {childFields.map((c, ci) => (
-              <ChildEditor key={c.id} idx={ci} depth={1} />
-            ))}
-            <div style={{ marginTop: 8 }}>
-              <button type="button" onClick={() => appendChild({ name: '', properties: [], children: [] } as any)}>Add Subcomponent</button>
+            <div className="form-group">
+              <p className="group-label">Subcomponents</p>
+              {childFields.map((c, ci) => (
+                <ChildEditor key={c.id} idx={ci} depth={1} />
+              ))}
+              <div>
+                <button type="button" className="secondary" onClick={() => appendChild({ name: '', properties: [], children: [] } as any)}>+ Add Subcomponent</button>
+              </div>
             </div>
 
-            <div className="row" style={{ marginTop: 12 }}>
-              <button type="button" className="secondary" onClick={() => setStep(1)}>Back</button>
-              <button type="button" onClick={() => setStep(3)}>Next: Media</button>
+            <div className="form-actions form-actions-sep">
+              <button type="button" className="secondary" onClick={() => setStep(1)}>← Back</button>
+              <button type="button" onClick={() => setStep(3)}>Next: Media →</button>
             </div>
-          </>
+          </div>
         )}
 
         {step === 3 && (
-          <>
-            <h3>Media</h3>
-            <div className="row">
+          <div className="form-section">
+            <h3 className="section-title">Media</h3>
+            <div className="form-row media-row">
               <div
+                className="drop-zone"
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); onDropFiles('photos', e.dataTransfer.files) }}
-                style={{ border: '1px dashed #9ca3af', padding: 12, borderRadius: 8 }}
               >
-                <div>Drag & Drop Photos here</div>
+                <p className="drop-zone-hint">📷 Drag &amp; drop photos here</p>
                 <input type="file" multiple onChange={e => onDropFiles('photos', e.target.files!)} />
-                <div className="row" style={{ marginTop: 8 }}>
-                  {photoPreviews.map((src, i) => <img key={i} src={src} alt="preview" style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 6 }} />)}
-                </div>
+                {photoPreviews.length > 0 && (
+                  <div className="drop-zone-previews">
+                    {photoPreviews.map((src, i) => <img key={i} src={src} alt="preview" className="media-preview-img" />)}
+                  </div>
+                )}
               </div>
               <div
+                className="drop-zone"
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); onDropFiles('videos', e.dataTransfer.files) }}
-                style={{ border: '1px dashed #9ca3af', padding: 12, borderRadius: 8 }}
               >
-                <div>Drag & Drop Videos here</div>
+                <p className="drop-zone-hint">🎬 Drag &amp; drop videos here</p>
                 <input type="file" multiple onChange={e => onDropFiles('videos', e.target.files!)} />
-                <div className="row" style={{ marginTop: 8 }}>
-                  {videoPreviews.map((src, i) => <video key={i} src={src as any} style={{ width: 120, height: 80, objectFit: 'cover', borderRadius: 6 }} controls />)}
-                </div>
+                {videoPreviews.length > 0 && (
+                  <div className="drop-zone-previews">
+                    {videoPreviews.map((src, i) => <video key={i} src={src as any} className="media-preview-video" controls />)}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="row" style={{ marginTop: 12 }}>
-              <button type="button" className="secondary" onClick={() => setStep(2)}>Back</button>
-              <button type="submit">Create Component</button>
+            <div className="form-actions">
+              <button type="button" className="secondary" onClick={() => setStep(2)}>← Back</button>
+              <button type="submit">✓ Create Component</button>
             </div>
-          </>
+          </div>
         )}
+
       </form>
     </div>
   )

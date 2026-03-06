@@ -45,6 +45,9 @@ export function ComparisonTable({ options, columns, onColumnsChange, highlightDi
     if (!next) return
     onColumnsChange([...columns, next.id])
   }
+  function removeCol(idx: number) {
+    onColumnsChange(columns.filter((_, i) => i !== idx))
+  }
   function changeAt(idx: number, val: string) {
     const cur = [...columns]
     const j = cur.findIndex(x => x === val)
@@ -61,78 +64,84 @@ export function ComparisonTable({ options, columns, onColumnsChange, highlightDi
     onColumnsChange(uniq)
   }
   return (
-    <div className="overflow-auto border rounded-md">
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-          <label>
-            <input type="checkbox" checked={highlightDifferences} onChange={e => onToggleHighlight(e.target.checked)} /> Highlight Differences
-          </label>
-          <label>
-            <input type="checkbox" checked={onlyCommon} onChange={e => onToggleOnlyCommon(e.target.checked)} /> Only Common Specs
-          </label>
-        </div>
+    <div className="compare-wrap">
+      <div className="compare-toolbar">
+        <label className="compare-toggle">
+          <input type="checkbox" checked={highlightDifferences} onChange={e => onToggleHighlight(e.target.checked)} />
+          Highlight Differences
+        </label>
+        <label className="compare-toggle">
+          <input type="checkbox" checked={onlyCommon} onChange={e => onToggleOnlyCommon(e.target.checked)} />
+          Only Common Specs
+        </label>
       </div>
-      <table className="min-w-full text-sm">
-        <thead className="sticky top-0 bg-white shadow-sm">
-          <tr>
-            <th className="px-3 py-2 text-left font-semibold">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>Spec</span>
-                <button
-                  aria-label="Add column"
-                  title="Add column"
-                  onClick={addColSafe}
-                  style={{
-                    width: 22,
-                    height: 22,
-                    lineHeight: '20px',
-                    textAlign: 'center',
-                    borderRadius: 6,
-                    border: '1px solid #d1d5db',
-                    background: '#f9fafb',
-                    cursor: 'pointer'
-                  }}
-                >
-                  +
-                </button>
-              </div>
-            </th>
-            {columns.map((id, idx) => {
-              const selected = options.find(o => o.id === id)
+      <div className="compare-scroll">
+        <table className="compare-table">
+          <thead>
+            <tr>
+              <th className="compare-th compare-th-spec">
+                <div className="compare-spec-header">
+                  <span>Spec</span>
+                  <button
+                    className="compare-add-btn"
+                    aria-label="Add column"
+                    title="Add column"
+                    onClick={addColSafe}
+                  >
+                    +
+                  </button>
+                </div>
+              </th>
+              {columns.map((id, idx) => {
+                const selected = options.find(o => o.id === id)
+                return (
+                  <th key={id + ':' + idx} className="compare-th compare-th-col">
+                    <div className="compare-col-header">
+                      {selected && selected.photoUrl
+                        ? <img src={selected.photoUrl} alt={selected.name} className="compare-thumb" />
+                        : <div className="compare-thumb-placeholder" />}
+                      <div className="compare-col-controls">
+                        <select
+                          className="compare-select"
+                          value={id}
+                          onChange={e => changeAt(idx, e.target.value)}
+                        >
+                          {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        </select>
+                        <button
+                          className="compare-remove-btn"
+                          aria-label="Remove column"
+                          title="Remove column"
+                          onClick={() => removeCol(idx)}
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {keys.map(k => {
+              const values = cols.map(i => valueToString((i.attributes || {})[k]))
+              const allSame = values.every(v => v === values[0])
+              const diff = !allSame
               return (
-                <th key={id + ':' + idx} className="px-3 py-2 text-left font-semibold">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {selected && selected.photoUrl
-                      ? <img src={selected.photoUrl} alt={selected.name} style={{ width: 72, height: 48, borderRadius: 6, objectFit: 'cover' }} />
-                      : <div style={{ width: 72, height: 48, borderRadius: 6, background: '#e5e7eb' }} />}
-                    <select value={id} onChange={e => changeAt(idx, e.target.value)}>
-                      {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                    </select>
-                  </div>
-                </th>
+                <tr key={k} className={highlightDifferences && diff ? 'compare-row-diff' : 'compare-row'}>
+                  <td className="compare-td-key">{k}</td>
+                  {cols.map((i, idx) => (
+                    <td key={(i.id || idx) + ':' + k} className="compare-td">
+                      {values[idx] || <span className="compare-empty">—</span>}
+                    </td>
+                  ))}
+                </tr>
               )
             })}
-          </tr>
-        </thead>
-        <tbody>
-          {keys.map(k => {
-            const values = cols.map(i => valueToString((i.attributes || {})[k]))
-            const allSame = values.every(v => v === values[0])
-            const diff = !allSame
-            const rowClass = highlightDifferences && diff ? 'bg-yellow-50' : ''
-            return (
-              <tr key={k} className={rowClass}>
-                <td className="px-3 py-2 font-medium">{k}</td>
-                {cols.map((i, idx) => (
-                  <td key={(i.id || idx) + ':' + k} className="px-3 py-2">
-                    {values[idx]}
-                  </td>
-                ))}
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

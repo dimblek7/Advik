@@ -38,6 +38,7 @@ export const Api = {
     ),
   createComponent: (token: string, form: FormData) => request<{ item: any }>(`/api/components`, { method: 'POST', body: form }, token),
   updateComponent: (token: string, id: string, form: FormData) => request<{ item: any }>(`/api/components/${id}`, { method: 'PUT', body: form }, token),
+  deleteComponent: (token: string, id: string) => request<{ ok: boolean }>(`/api/components/${id}`, { method: 'DELETE' }, token),
   cloneComponent: (token: string, id: string) => request<{ item: any }>(`/api/components/${id}/clone`, { method: 'POST' }, token),
   listAttributeKeys: (token: string) => request<{ keys: string[] }>(`/api/components/attribute-keys`, {}, token),
 }
